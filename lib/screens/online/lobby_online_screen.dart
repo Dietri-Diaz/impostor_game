@@ -84,7 +84,16 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
   }
 
   Future<void> _nuevaPartida() async {
-    await _sync?.volverAlLobby();
+    try {
+      await _sync?.volverAlLobby();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo reiniciar: $e')),
+        );
+      }
+      return;
+    }
     if (mounted) {
       setState(() {
         _personajeSecreto = null;

@@ -107,13 +107,11 @@ class _VotacionOnlineViewState extends State<VotacionOnlineView> {
 
   Future<void> _confirmarVoto() async {
     final uid = _pendiente;
-    if (uid == null) return;
+    if (uid == null || _yaVote) return;
+    setState(() => _pendiente = null); // cierra la hoja de inmediato
     await widget.manager.votar(widget.codigo, uid);
     if (!mounted) return;
-    setState(() {
-      _yaVote = true;
-      _pendiente = null;
-    });
+    setState(() => _yaVote = true);
   }
 
   void _cancelarConfirm() => setState(() => _pendiente = null);

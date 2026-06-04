@@ -32,6 +32,7 @@ class RondaOnlineSync {
         'conteoVotos': <String, int>{},
         'ganador': null,
         'resultadoRonda': null,
+        'votosEmitidos': 0,
       };
 
   /// HOST: lee el roster del lobby, crea la Partida con ids=uid, asigna roles,
@@ -87,7 +88,8 @@ class RondaOnlineSync {
     final votosRaw = await _gw.leerUna('salas/$codigo/votos') ?? {};
     final votos = <String, String>{
       for (final e in votosRaw.entries)
-        e.key: (e.value as Map)['objetivoUid'] as String,
+        if (e.value is Map && (e.value as Map)['objetivoUid'] is String)
+          e.key: (e.value as Map)['objetivoUid'] as String,
     };
 
     final conteo = _manager.procesarVotacion(votos);
@@ -138,6 +140,7 @@ class RondaOnlineSync {
       'jugadoresVivos': [for (final j in p.jugadoresVivos) j.id],
       'conteoVotos': <String, int>{},
       'resultadoRonda': null,
+      'votosEmitidos': 0,
     });
     await _gw.actualizar('salas/$codigo/meta', {
       'estado': EstadoSala.discusion.name,
