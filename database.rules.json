@@ -1,0 +1,40 @@
+{
+  "rules": {
+    "codigos": {
+      "$codigo": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "salas": {
+      "$codigo": {
+        "meta": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || data.child('hostUid').val() === auth.uid)"
+        },
+        "jugadores": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('salas').child($codigo).child('meta').child('hostUid').val() === auth.uid)"
+          }
+        },
+        "publico": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('salas').child($codigo).child('meta').child('hostUid').val() === auth.uid"
+        },
+        "privado": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && root.child('salas').child($codigo).child('meta').child('hostUid').val() === auth.uid"
+          }
+        },
+        "votos": {
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('salas').child($codigo).child('meta').child('hostUid').val() === auth.uid)",
+            ".write": "auth != null && auth.uid === $uid && root.child('salas').child($codigo).child('meta').child('estado').val() === 'votando'"
+          }
+        }
+      }
+    }
+  }
+}
