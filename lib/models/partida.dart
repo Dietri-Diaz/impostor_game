@@ -97,4 +97,29 @@ class Partida {
       'ganador': ganador?.name,
     };
   }
+
+  factory Partida.fromJson(Map<String, dynamic> json) {
+    final ganadorRaw = json['ganador'] as String?;
+    return Partida(
+      id: json['id'] as String,
+      tematica: json['tematica'] as String,
+      personajeSecreto: json['personajeSecreto'] as String,
+      jugadores: [
+        for (final j in (json['jugadores'] as List? ?? const []))
+          Jugador.fromJson((j as Map).cast<String, dynamic>()),
+      ],
+      configuracion: ConfiguracionPartida.fromJson(
+        (json['configuracion'] as Map).cast<String, dynamic>(),
+      ),
+      rondas: [
+        for (final r in (json['rondas'] as List? ?? const []))
+          Ronda.fromJson((r as Map).cast<String, dynamic>()),
+      ],
+      rondaActual: (json['rondaActual'] as int?) ?? 1,
+      finalizada: (json['finalizada'] as bool?) ?? false,
+      ganador: ganadorRaw == null
+          ? null
+          : TipoGanador.values.firstWhere((g) => g.name == ganadorRaw),
+    );
+  }
 }

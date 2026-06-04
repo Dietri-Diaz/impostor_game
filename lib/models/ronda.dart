@@ -50,4 +50,42 @@ class Ronda {
       'fin': fin?.toIso8601String(),
     };
   }
+
+  factory Ronda.fromJson(Map<String, dynamic> json) {
+    Map<String, String> parseVotos(Object? raw) {
+      final m = (raw as Map?) ?? const {};
+      return {for (final e in m.entries) e.key as String: e.value as String};
+    }
+
+    Map<String, int>? parseConteo(Object? raw) {
+      if (raw == null) return null;
+      final m = (raw as Map);
+      return {for (final e in m.entries) e.key as String: e.value as int};
+    }
+
+    final elimRaw = json['jugadorEliminado'];
+    final iniRaw = json['jugadorInicial'];
+    return Ronda(
+      numero: json['numero'] as int,
+      jugadoresVivos: [
+        for (final j in (json['jugadoresVivos'] as List? ?? const []))
+          Jugador.fromJson((j as Map).cast<String, dynamic>()),
+      ],
+      votos: parseVotos(json['votos']),
+      conteoVotos: parseConteo(json['conteoVotos']),
+      jugadorEliminado: elimRaw == null
+          ? null
+          : Jugador.fromJson((elimRaw as Map).cast<String, dynamic>()),
+      huboEmpate: (json['huboEmpate'] as bool?) ?? false,
+      jugadoresEmpatados:
+          (json['jugadoresEmpatados'] as List?)?.cast<String>(),
+      jugadorInicial: iniRaw == null
+          ? null
+          : Jugador.fromJson((iniRaw as Map).cast<String, dynamic>()),
+      inicio: DateTime.parse(json['inicio'] as String),
+      fin: (json['fin'] as String?) == null
+          ? null
+          : DateTime.parse(json['fin'] as String),
+    );
+  }
 }
