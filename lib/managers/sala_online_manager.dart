@@ -170,4 +170,17 @@ class SalaOnlineManager {
 
   Stream<Map<String, dynamic>?> observarPublico(String codigo) =>
       _gw.observar('salas/$codigo/publico');
+
+  /// Stream del rol privado del jugador local (solo este uid puede leerlo).
+  Stream<RolPrivado?> observarMiRol(String codigo) =>
+      _gw.observar('salas/$codigo/privado/$uid')
+          .map((m) => m == null ? null : RolPrivado.fromMap(m));
+
+  /// Emite el voto del jugador local (solo válido en estado 'votando').
+  Future<void> votar(String codigo, String objetivoUid) =>
+      _gw.escribir('salas/$codigo/votos/$uid', {'objetivoUid': objetivoUid});
+
+  /// Stream de los votos emitidos (solo el host puede leer este nodo).
+  Stream<Map<String, dynamic>?> observarVotos(String codigo) =>
+      _gw.observar('salas/$codigo/votos');
 }

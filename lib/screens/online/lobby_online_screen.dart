@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
 import '../../core/app_typography.dart';
 import '../../data/tematicas_data.dart';
+import 'discusion_online_view.dart';
+import 'revelar_rol_online_screen.dart';
 import '../../managers/partida_manager.dart';
 import '../../managers/ronda_online_sync.dart';
 import '../../managers/sala_online_manager.dart';
@@ -157,9 +159,22 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
             ),
           ),
         );
+      case EstadoSala.revelando:
+        return RevelarRolOnlineView(
+          codigo: widget.codigo,
+          manager: widget.manager,
+          esHost: widget.esHost,
+          sync: _sync,
+        );
+      case EstadoSala.discusion:
+        return DiscusionOnlineView(
+          codigo: widget.codigo,
+          manager: widget.manager,
+          esHost: widget.esHost,
+          sync: _sync,
+        );
       default:
-        // Fases revelando/discusion/votando/resultado/finalizada —
-        // placeholder para Phase 8.
+        // Fases votando/resultado/finalizada — Phase 8b/8c.
         return AppScaffold(
           child: Center(
             child: Text(
