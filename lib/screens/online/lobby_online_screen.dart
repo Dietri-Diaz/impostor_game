@@ -1,4 +1,5 @@
 // lib/screens/online/lobby_online_screen.dart
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ class LobbyOnlineScreen extends StatefulWidget {
 class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
   RondaOnlineSync? _sync;
   String? _personajeSecreto;
+  bool _iniciando = false;
 
   Future<void> _confirmarSalir() async {
     final confirmar = await showDialog<bool>(
@@ -77,6 +79,7 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
   }
 
   Future<void> _empezarPartida() async {
+    if (_iniciando) return; // evita doble toque
     final firebase = context.read<FirebaseService?>();
     if (firebase == null) return;
 
@@ -86,6 +89,7 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
     final personajes = tematicasData[tematica];
     if (personajes == null || personajes.isEmpty) return;
 
+    _iniciando = true;
     _personajeSecreto ??=
         personajes[Random().nextInt(personajes.length)].nombre;
 
@@ -96,7 +100,18 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
       manager: PartidaManager(),
     );
 
-    await _sync!.iniciarPartida(personajeSecreto: _personajeSecreto!);
+    try {
+      await _sync!.iniciarPartida(personajeSecreto: _personajeSecreto!);
+      // Al iniciar, meta.estado pasa a 'revelando' y el router cambia de vista;
+      // dejamos _iniciando en true (ya no volvemos al lobby).
+    } catch (e) {
+      _iniciando = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo empezar: $e')),
+        );
+      }
+    }
   }
 
   Widget _cuerpo(EstadoSala estado, Map<String, dynamic>? meta) {
@@ -312,20 +327,41 @@ class _LobbyView extends StatelessWidget {
                                 ? AppButtonVariant.secondary
                                 : AppButtonVariant.safe,
                             onPressed: () =>
-                                manager.marcarListo(!yaListo),
+                                unawaited(manager.marcarListo(!yaListo)),
                           ),
                           const SizedBox(height: 12),
 
-                          // Botón empezar (solo host)
-                          if (esHost)
-                            AppButton(
-                              text: 'Empezar partida',
-                              icon: Icons.play_arrow_rounded,
-                              onPressed: puedeIniciar(jugadores)
-                                  ? onEmpezar
-                                  : null,
-                            )
-                          else
+                          // Botón empezar (solo host): requiere >=3 conectados
+                          // y que TODOS los activos estén "listo".
+                          if (esHost) ...[
+                            Builder(
+                              builder: (_) {
+                                final activos_ = activos(jugadores);
+                                final puedeEmpezar = puedeIniciar(jugadores) &&
+                                    activos_.every((j) => j.listo);
+                                return Column(
+                                  children: [
+                                    AppButton(
+                                      text: 'Empezar partida',
+                                      icon: Icons.play_arrow_rounded,
+                                      onPressed:
+                                          puedeEmpezar ? onEmpezar : null,
+                                    ),
+                                    if (!puedeEmpezar) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        activos_.length < 3
+                                            ? 'Se necesitan al menos 3 jugadores'
+                                            : 'Esperando a que todos estén listos…',
+                                        style: AppType.bodyS,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                          ] else
                             const Text(
                               'Esperando a que el anfitrión empiece…',
                               style: AppType.bodyS,
