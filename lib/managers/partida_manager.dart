@@ -50,6 +50,7 @@ class PartidaManager extends ChangeNotifier {
     required String personajeSecreto,
     required List<String> nombresJugadores,
     required ConfiguracionPartida configuracion,
+    List<String>? ids,
   }) {
     final error = Validators.playerList(nombresJugadores);
     if (error != null) throw PartidaException(error);
@@ -68,10 +69,14 @@ class PartidaManager extends ChangeNotifier {
     final indices = List<int>.generate(n, (i) => i)..shuffle(_random);
     final impostorIndices = indices.take(numImpostores).toSet();
 
+    if (ids != null && ids.length != n) {
+      throw PartidaException('ids debe tener la misma longitud que nombres');
+    }
+
     final jugadores = List.generate(
       n,
       (index) => Jugador(
-        id: _uuid.v4(),
+        id: ids != null ? ids[index] : _uuid.v4(),
         nombre: nombresJugadores[index].trim(),
         numero: index + 1,
         esImpostor: impostorIndices.contains(index),
