@@ -26,6 +26,18 @@ class FakeSalaGateway implements SalaGateway {
     return null;
   }
 
+  dynamic _rawRead(List<String> seg) {
+    dynamic node = _root;
+    for (final s in seg) {
+      if (node is Map && node.containsKey(s)) {
+        node = node[s];
+      } else {
+        return null;
+      }
+    }
+    return node;
+  }
+
   void _set(List<String> seg, Object? valor) {
     if (seg.isEmpty) return;
     Map<String, dynamic> node = _root;
@@ -70,7 +82,10 @@ class FakeSalaGateway implements SalaGateway {
 
   @override
   Stream<Map<String, dynamic>?> observar(String ruta) {
-    final c = StreamController<Map<String, dynamic>?>.broadcast();
+    late StreamController<Map<String, dynamic>?> c;
+    c = StreamController<Map<String, dynamic>?>.broadcast(
+      onCancel: () => _watchers[ruta]?.remove(c),
+    );
     (_watchers[ruta] ??= []).add(c);
     scheduleMicrotask(() {
       if (!c.isClosed) c.add(_leer(_seg(ruta)));
@@ -80,7 +95,7 @@ class FakeSalaGateway implements SalaGateway {
 
   @override
   Future<bool> reservarSiAusente(String ruta, Object valor) async {
-    if (_leer(_seg(ruta)) != null) return false;
+    if (_rawRead(_seg(ruta)) != null) return false;
     final seg = _seg(ruta);
     if (valor is Map) {
       _set(seg, Map<String, dynamic>.from(valor));

@@ -50,4 +50,22 @@ void main() {
     final m = await gw.leerUna('salas/ABC/jugadores/u1');
     expect(m!['conectado'], false);
   });
+
+  test('reservarSiAusente respeta un valor escalar existente', () async {
+    final gw = FakeSalaGateway();
+    await gw.escribir('codigos/ABC', 12345); // valor escalar, no mapa
+    expect(await gw.reservarSiAusente('codigos/ABC', {'host': 'u2'}), false);
+    // No debe haber sobrescrito el escalar:
+    expect(gw.raiz['codigos']['ABC'], 12345);
+  });
+
+  test('observar se limpia de _watchers al cancelar', () async {
+    final gw = FakeSalaGateway();
+    final sub = gw.observar('salas/ABC/meta').listen((_) {});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await sub.cancel();
+    // Una nueva escritura tras cancelar no debe lanzar (lista limpia o sin closed controllers).
+    await gw.escribir('salas/ABC/meta', {'estado': 'lobby'});
+    expect(await gw.leerUna('salas/ABC/meta'), isNotNull);
+  });
 }
