@@ -10,6 +10,8 @@ import '../../core/app_theme.dart';
 import '../../core/app_typography.dart';
 import '../../data/tematicas_data.dart';
 import 'discusion_online_view.dart';
+import 'resultado_final_online_screen.dart';
+import 'resultado_ronda_online_screen.dart';
 import 'revelar_rol_online_screen.dart';
 import 'votacion_online_screen.dart';
 import '../../managers/partida_manager.dart';
@@ -78,6 +80,16 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
       if (mounted) {
         Navigator.of(context).popUntil((r) => r.isFirst);
       }
+    }
+  }
+
+  Future<void> _nuevaPartida() async {
+    await _sync?.volverAlLobby();
+    if (mounted) {
+      setState(() {
+        _personajeSecreto = null;
+        _iniciando = false;
+      });
     }
   }
 
@@ -181,16 +193,20 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
           esHost: widget.esHost,
           sync: _sync,
         );
-      default:
-        // Fases resultado/finalizada — Phase 8c.
-        return AppScaffold(
-          child: Center(
-            child: Text(
-              'Fase: ${estado.name}\n(en construcción)',
-              style: AppType.titleM,
-              textAlign: TextAlign.center,
-            ),
-          ),
+      case EstadoSala.resultado:
+        return ResultadoRondaOnlineView(
+          codigo: widget.codigo,
+          manager: widget.manager,
+          esHost: widget.esHost,
+          sync: _sync,
+        );
+      case EstadoSala.finalizada:
+        return ResultadoFinalOnlineView(
+          codigo: widget.codigo,
+          manager: widget.manager,
+          esHost: widget.esHost,
+          sync: _sync,
+          onNuevaPartida: _nuevaPartida,
         );
     }
   }

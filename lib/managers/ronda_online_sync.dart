@@ -113,6 +113,12 @@ class RondaOnlineSync {
       'jugadoresVivos': [for (final j in p.jugadoresVivos) j.id],
       'resultadoRonda': {'eliminadoUid': eliminadoId, 'eraImpostor': eraImpostor},
       'ganador': fin ? p.ganador?.name : null,
+      'reveal': fin
+          ? {
+              'personaje': p.personajeSecreto,
+              'impostores': [for (final j in p.impostores) j.id],
+            }
+          : null,
     });
     await _gw.actualizar('salas/$codigo/meta', {'estado': EstadoSala.resultado.name});
   }
@@ -143,4 +149,22 @@ class RondaOnlineSync {
   /// HOST: resultado (con ganador) → finalizada.
   Future<void> irAFinal() =>
       _gw.actualizar('salas/$codigo/meta', {'estado': EstadoSala.finalizada.name});
+
+  /// HOST: reinicia para una nueva partida (mismo grupo, nuevo impostor).
+  Future<void> volverAlLobby() async {
+    _manager.reiniciar();
+    await _gw.escribir('salas/$codigo/privado', null);
+    await _gw.escribir('salas/$codigo/votos', null);
+    await _gw.escribir('salas/$codigo/publico', null);
+    final jug = await _gw.leerUna('salas/$codigo/jugadores') ?? {};
+    for (final uid in jug.keys) {
+      await _gw.actualizar(
+          'salas/$codigo/jugadores/$uid', {'listo': false, 'eliminado': false});
+    }
+    await _gw.actualizar('salas/$codigo/meta', {
+      'estado': EstadoSala.lobby.name,
+      'rondaActual': 1,
+      'jugadorInicialUid': null,
+    });
+  }
 }
