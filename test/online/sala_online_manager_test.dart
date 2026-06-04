@@ -80,6 +80,17 @@ void main() {
     await sub.cancel();
   });
 
+  test('salir como host cancela los onDisconnect de meta y jugador', () async {
+    final gw = FakeSalaGateway();
+    final host = SalaOnlineManager(gateway: gw, uid: 'h', random: Random(1));
+    final codigo = await host.crearSala(
+        nombreHost: 'Ana', tematica: 'Animales', configuracion: ConfiguracionPartida());
+    await host.salir();
+    expect(gw.onDisconnects.containsKey('salas/$codigo/meta/estado'), false);
+    expect(gw.onDisconnects.containsKey('salas/$codigo/meta/hostConectado'), false);
+    expect(gw.onDisconnects.containsKey('salas/$codigo/jugadores/h/conectado'), false);
+  });
+
   test('presencia: onDisconnect del host marca estado abandonada', () async {
     final gw = FakeSalaGateway();
     final host = SalaOnlineManager(gateway: gw, uid: 'h', random: Random(1));

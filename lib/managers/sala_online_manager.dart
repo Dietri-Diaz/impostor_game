@@ -88,6 +88,9 @@ class SalaOnlineManager {
         !jugadores.containsKey(uid)) {
       throw SalaException('La sala está llena (máx. ${GameConstants.maxPlayers})');
     }
+    // NOTE: `jugadores.length + 1` se lee de un snapshot y se escribe sin
+    // transacción; dos invitados uniéndose a la vez podrían recibir el mismo
+    // número. Aceptable en V1 (host-authoritative sin transacción aquí).
     final numero = jugadores.containsKey(uid)
         ? (jugadores[uid] as Map)['numero'] as int
         : jugadores.length + 1;
@@ -100,13 +103,15 @@ class SalaOnlineManager {
     await _configurarPresencia();
   }
 
-  Map<String, Object?> _jugadorMap({required String nombre, required int numero}) => {
-        'nombre': nombre,
-        'numero': numero,
-        'conectado': true,
-        'listo': false,
-        'eliminado': false,
-      };
+  Map<String, Object?> _jugadorMap({required String nombre, required int numero}) =>
+      JugadorSala(
+        uid: uid,
+        nombre: nombre,
+        numero: numero,
+        conectado: true,
+        listo: false,
+        eliminado: false,
+      ).toMap();
 
   Future<void> _configurarPresencia() async {
     final c = _codigo!;
@@ -117,11 +122,17 @@ class SalaOnlineManager {
     }
   }
 
-  Future<void> marcarListo(bool listo) =>
-      _gw.actualizar('salas/$_codigo/jugadores/$uid', {'listo': listo});
+  Future<void> marcarListo(bool listo) async {
+    final c = _codigo;
+    if (c == null) return;
+    await _gw.actualizar('salas/$c/jugadores/$uid', {'listo': listo});
+  }
 
-  Future<void> cambiarNombre(String nombre) =>
-      _gw.actualizar('salas/$_codigo/jugadores/$uid', {'nombre': nombre});
+  Future<void> cambiarNombre(String nombre) async {
+    final c = _codigo;
+    if (c == null) return;
+    await _gw.actualizar('salas/$c/jugadores/$uid', {'nombre': nombre});
+  }
 
   /// Sale de la sala. Si es host, marca la sala abandonada.
   Future<void> salir() async {
@@ -129,6 +140,8 @@ class SalaOnlineManager {
     if (c == null) return;
     await _gw.cancelarAlDesconectar('salas/$c/jugadores/$uid/conectado');
     if (esHost) {
+      await _gw.cancelarAlDesconectar('salas/$c/meta/estado');
+      await _gw.cancelarAlDesconectar('salas/$c/meta/hostConectado');
       await _gw.actualizar('salas/$c/meta', {
         'estado': EstadoSala.abandonada.name,
         'hostConectado': false,
