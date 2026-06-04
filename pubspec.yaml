@@ -1,0 +1,56 @@
+name: impostor_game
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 2.0.0+2
+
+environment:
+  sdk: ">=3.1.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  audioplayers: ^6.5.1
+  animated_text_kit: ^4.3.0
+  confetti: ^0.8.0
+  url_launcher: ^6.2.2
+  uuid: ^4.2.1
+
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  shared_preferences: ^2.2.2
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/dragon_ball/
+    - assets/images/marvel/
+    - assets/images/naruto/
+    - assets/images/one_piece/
+    - assets/images/pokemon/
+    - assets/images/super_mario/
+    - assets/images/disney/
+    - assets/images/stranger_things/
+    - assets/images/harry_potter/
+    - assets/images/dc/
+    - assets/images/demon_slayer/
+    - assets/images/attack_on_titan/
+    - assets/images/the_office/
+    - assets/images/breaking_bad/
+    - assets/audio/
+    - assets/fonts/
+  fonts:
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton-Regular.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf

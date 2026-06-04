@@ -1,0 +1,36 @@
+# Configuración del analyzer.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
+    # strict-inference desactivado: genera demasiado ruido por
+    # constructores genéricos (FadeScalePageRoute, showDialog) sin
+    # aportar valor real.
+  errors:
+    avoid_print: error
+    unused_import: warning
+    unused_local_variable: warning
+    dead_code: warning
+    deprecated_member_use: info
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_fields: true
+    prefer_final_locals: true
+    prefer_single_quotes: true
+    prefer_relative_imports: true
+    sort_child_properties_last: true
+    use_key_in_widget_constructors: true
+    avoid_unnecessary_containers: true
+    sized_box_for_whitespace: true
+    avoid_returning_null_for_future: true
+    avoid_void_async: true
+    cancel_subscriptions: true
+    close_sinks: true
+    always_declare_return_types: true
