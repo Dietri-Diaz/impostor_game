@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
 import '../core/app_typography.dart';
 import '../services/audio_service.dart';
+import '../services/firebase_service.dart';
 import '../services/preferences_service.dart';
 import '../services/session_persistence.dart';
 import '../widgets/app_button.dart';
@@ -14,6 +15,8 @@ import '../widgets/app_components.dart';
 import '../widgets/auto_fit_title.dart';
 import 'configurar_partida_screen.dart';
 import 'lobby_screen.dart';
+import 'online/crear_sala_screen.dart';
+import 'online/unirse_sala_screen.dart';
 import 'reglas_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -428,6 +431,65 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                             );
                             if (mounted) setState(() {});
+                          },
+                        ),
+
+                        SizedBox(height: screenHeight * 0.025),
+
+                        // ── Sección JUGAR ONLINE ──────────────────────────
+                        const Text('JUGAR ONLINE', style: AppType.label),
+                        const SizedBox(height: 10),
+                        AppButton(
+                          text: 'Crear sala',
+                          icon: Icons.add_circle_outline,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () {
+                            AudioService.playClick();
+                            final firebase =
+                                context.read<FirebaseService?>();
+                            if (firebase == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'El modo online no está disponible'
+                                    ' (revisa tu conexión).',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.of(context).push(
+                              SlidePageRoute(
+                                page: const CrearSalaScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        AppButton(
+                          text: 'Unirse con código',
+                          icon: Icons.login_rounded,
+                          variant: AppButtonVariant.secondary,
+                          onPressed: () {
+                            AudioService.playClick();
+                            final firebase =
+                                context.read<FirebaseService?>();
+                            if (firebase == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'El modo online no está disponible'
+                                    ' (revisa tu conexión).',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.of(context).push(
+                              SlidePageRoute(
+                                page: const UnirseSalaScreen(),
+                              ),
+                            );
                           },
                         ),
 
