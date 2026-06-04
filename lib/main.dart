@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_theme.dart';
 import 'screens/home_screen.dart';
+import 'services/firebase_service.dart';
 import 'services/preferences_service.dart';
 
 Future<void> main() async {
@@ -19,10 +20,14 @@ Future<void> main() async {
 
   final sharedPrefs = await SharedPreferences.getInstance();
   final prefs = PreferencesService(sharedPrefs);
+  final firebase = await FirebaseService.tryInit(); // null si Firebase no está listo
 
   runApp(
-    Provider<PreferencesService>.value(
-      value: prefs,
+    MultiProvider(
+      providers: [
+        Provider<PreferencesService>.value(value: prefs),
+        Provider<FirebaseService?>.value(value: firebase),
+      ],
       child: const ImpostorGame(),
     ),
   );
