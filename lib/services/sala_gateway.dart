@@ -75,3 +75,29 @@ class RolPrivado {
         personajeVisto: m['personajeVisto'] as String?,
       );
 }
+
+/// Seam sobre la I/O de Realtime Database. Permite testear la lógica de
+/// salas con una implementación en memoria. Las rutas son relativas a la
+/// raíz, ej. 'salas/ABC123/meta'.
+abstract class SalaGateway {
+  /// Lee un nodo una vez. Devuelve null si no existe.
+  Future<Map<String, dynamic>?> leerUna(String ruta);
+
+  /// Sobrescribe el valor en [ruta].
+  Future<void> escribir(String ruta, Object? valor);
+
+  /// Merge parcial de campos en [ruta].
+  Future<void> actualizar(String ruta, Map<String, Object?> valores);
+
+  /// Stream del nodo en [ruta] (mapa o null), emitiendo en cada cambio.
+  Stream<Map<String, dynamic>?> observar(String ruta);
+
+  /// Reserva [ruta] solo si NO existe (transacción). true si la reservó.
+  Future<bool> reservarSiAusente(String ruta, Object valor);
+
+  /// Programa una escritura automática cuando el cliente se desconecte.
+  Future<void> alDesconectar(String ruta, Object? valor);
+
+  /// Cancela una escritura onDisconnect previamente registrada en [ruta].
+  Future<void> cancelarAlDesconectar(String ruta);
+}
