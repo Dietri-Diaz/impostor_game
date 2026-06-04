@@ -117,6 +117,10 @@ class RondaOnlineSync {
     await _gw.actualizar('salas/$codigo/meta', {'estado': EstadoSala.resultado.name});
   }
 
+  /// HOST: publica cuántos votos se han emitido (para mostrar progreso a todos).
+  Future<void> publicarProgresoVotos(int emitidos) =>
+      _gw.actualizar('salas/$codigo/publico', {'votosEmitidos': emitidos});
+
   /// HOST: avanza a la siguiente ronda de votación dentro de la MISMA partida
   /// (mismo impostor; roles ya revelados). Va a 'discusion'.
   Future<void> siguienteRonda() async {

@@ -11,6 +11,7 @@ import '../../core/app_typography.dart';
 import '../../data/tematicas_data.dart';
 import 'discusion_online_view.dart';
 import 'revelar_rol_online_screen.dart';
+import 'votacion_online_screen.dart';
 import '../../managers/partida_manager.dart';
 import '../../managers/ronda_online_sync.dart';
 import '../../managers/sala_online_manager.dart';
@@ -173,8 +174,15 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
           esHost: widget.esHost,
           sync: _sync,
         );
+      case EstadoSala.votando:
+        return VotacionOnlineView(
+          codigo: widget.codigo,
+          manager: widget.manager,
+          esHost: widget.esHost,
+          sync: _sync,
+        );
       default:
-        // Fases votando/resultado/finalizada — Phase 8b/8c.
+        // Fases resultado/finalizada — Phase 8c.
         return AppScaffold(
           child: Center(
             child: Text(
