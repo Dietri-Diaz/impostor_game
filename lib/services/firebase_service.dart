@@ -15,13 +15,23 @@ class FirebaseService {
   final FirebaseDatabase db;
   final String uid;
 
+  /// URL de la Realtime Database del proyecto. Se fija explícitamente porque
+  /// el `google-services.json` puede no incluirla (si se descargó antes de
+  /// crear la base). No es un secreto: igual viaja embebida en el cliente.
+  static const String _databaseUrl =
+      'https://impostor-game-b3f9c-default-rtdb.firebaseio.com';
+
   /// Llamar una vez en main(). Nunca lanza: devuelve null si falla.
   static Future<FirebaseService?> tryInit() async {
     try {
       await Firebase.initializeApp();
       final cred = await FirebaseAuth.instance.signInAnonymously();
       final uid = cred.user!.uid;
-      return FirebaseService._(FirebaseDatabase.instance, uid);
+      final db = FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: _databaseUrl,
+      );
+      return FirebaseService._(db, uid);
     } catch (e) {
       debugPrint('FirebaseService.tryInit falló (modo online deshabilitado): $e');
       return null;
