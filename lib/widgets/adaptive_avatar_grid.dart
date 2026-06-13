@@ -79,6 +79,10 @@ class AdaptiveAvatarGrid extends StatelessWidget {
           maxHeight: constraints.maxHeight,
           spacing: spacing,
           maxCell: maxCell,
+          // Reserva real para la etiqueta: SizedBox(4) + una línea de bodyS
+          // (fontSize 13 ≈ 17px). 24 deja un pequeño margen y evita el
+          // overflow sub-pixel/varios-px que aparecía con 16.
+          labelHeight: 24,
         );
         final cols = layout.columns;
         final cell = layout.cell;
@@ -94,21 +98,25 @@ class AdaptiveAvatarGrid extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (final row in rows)
+              // Espaciado SOLO entre filas/celdas (no en los bordes externos),
+              // así el total coincide con lo reservado por computeAvatarLayout
+              // y no desborda ni en vertical ni en horizontal.
+              for (var r = 0; r < rows.length; r++)
                 Padding(
-                  padding: EdgeInsets.only(bottom: spacing),
+                  padding: EdgeInsets.only(
+                      bottom: r == rows.length - 1 ? 0 : spacing),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      for (final item in row)
+                      for (var c = 0; c < rows[r].length; c++)
                         Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: spacing / 2),
+                          padding: EdgeInsets.only(
+                              right: c == rows[r].length - 1 ? 0 : spacing),
                           child: _AvatarCell(
-                            item: item,
+                            item: rows[r][c],
                             size: cell,
-                            selected: item.id == selectedId,
-                            onTap: () => onTap(item),
+                            selected: rows[r][c].id == selectedId,
+                            onTap: () => onTap(rows[r][c]),
                           ),
                         ),
                     ],
@@ -170,7 +178,7 @@ class _AvatarCell extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             SizedBox(
-              width: size + 8,
+              width: size,
               child: Text(
                 item.label,
                 maxLines: 1,
