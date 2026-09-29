@@ -20,6 +20,7 @@ import '../../managers/sala_online_manager.dart';
 import '../../managers/sala_predicados.dart';
 import '../../services/firebase_sala_gateway.dart';
 import '../../services/firebase_service.dart';
+import '../../services/preferences_service.dart';
 import '../../services/sala_gateway.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_components.dart';
@@ -48,6 +49,31 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
   String? _personajeSecreto;
   bool _iniciando = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Solo el invitado puede reconectar: la partida del host vive en su
+    // memoria (si el host se va, la sala se cierra para todos).
+    if (!widget.esHost) {
+      final prefs = context.read<PreferencesService>();
+      // Tras el frame: avisar a Home durante el build lanzaría una excepción.
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => unawaited(prefs.setSalaActivaCodigo(widget.codigo)));
+    }
+  }
+
+  /// Sale de la sala, olvida el código guardado y vuelve al inicio.
+  Future<void> _salirAlInicio() async {
+    final prefs = context.read<PreferencesService>();
+    try {
+      await widget.manager.salir();
+    } catch (_) {
+      // Sin red: igual volvemos al inicio; el onDisconnect marca la salida.
+    }
+    await prefs.clearSalaActiva();
+    if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
   Future<void> _confirmarSalir() async {
     final confirmar = await showDialog<bool>(
       context: context,
@@ -75,12 +101,7 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
         ],
       ),
     );
-    if (confirmar == true && mounted) {
-      await widget.manager.salir();
-      if (mounted) {
-        Navigator.of(context).popUntil((r) => r.isFirst);
-      }
-    }
+    if (confirmar == true && mounted) await _salirAlInicio();
   }
 
   Future<void> _nuevaPartida() async {
@@ -149,6 +170,10 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
           onEmpezar: _empezarPartida,
         );
       case EstadoSala.abandonada:
+        // La sala ya no existe para nadie: que Home no ofrezca reconectar.
+        final prefs = context.read<PreferencesService>();
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => unawaited(prefs.clearSalaActiva()));
         return AppScaffold(
           child: Center(
             child: Padding(
@@ -169,12 +194,7 @@ class _LobbyOnlineScreenState extends State<LobbyOnlineScreen> {
                     text: 'Volver al inicio',
                     icon: Icons.home_rounded,
                     variant: AppButtonVariant.secondary,
-                    onPressed: () async {
-                      await widget.manager.salir();
-                      if (mounted) {
-                        Navigator.of(context).popUntil((r) => r.isFirst);
-                      }
-                    },
+                    onPressed: _salirAlInicio,
                   ),
                 ],
               ),

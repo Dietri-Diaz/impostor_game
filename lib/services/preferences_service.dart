@@ -1,5 +1,6 @@
 // lib/services/preferences_service.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Wrapper sobre [SharedPreferences] que centraliza las claves usadas en
@@ -23,6 +24,25 @@ class PreferencesService {
   Future<void> saveActiveSession(String json) =>
       _prefs.setString(_kActiveSession, json);
   Future<void> clearActiveSession() => _prefs.remove(_kActiveSession);
+
+  // ---------- Sala online activa (para reconectar) ----------
+  static const String _kSalaActiva = 'online.sala_activa';
+
+  String? get salaActivaCodigo => _prefs.getString(_kSalaActiva);
+
+  /// Observable para que Home muestre/oculte "Volver a la sala" al regresar.
+  late final ValueNotifier<String?> salaActivaNotifier =
+      ValueNotifier(salaActivaCodigo);
+
+  Future<void> setSalaActivaCodigo(String codigo) async {
+    salaActivaNotifier.value = codigo;
+    await _prefs.setString(_kSalaActiva, codigo);
+  }
+
+  Future<void> clearSalaActiva() async {
+    salaActivaNotifier.value = null;
+    await _prefs.remove(_kSalaActiva);
+  }
 
   // ---------- Gameplay ----------
   static const String _kSkipPasaTelefono = 'gameplay.skip_pasa_telefono';

@@ -62,6 +62,10 @@ class _VotacionOnlineViewState extends State<VotacionOnlineView> {
   @override
   void initState() {
     super.initState();
+    // Al reconectar a mitad de votación, no volver a pedir un voto ya emitido.
+    widget.manager.yaVote(widget.codigo).then((v) {
+      if (v && mounted) setState(() => _yaVote = true);
+    }).catchError((_) {});
     if (widget.esHost) {
       _subJugadores = widget.manager
           .observarJugadores(widget.codigo)

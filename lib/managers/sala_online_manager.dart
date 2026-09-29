@@ -80,10 +80,16 @@ class SalaOnlineManager {
     if (meta == null) {
       throw SalaException('La sala "$codigo" no existe');
     }
+    final jugadores = await _gw.leerUna('salas/$codigo/jugadores') ?? {};
+    // Si ya estaba en la sala (p. ej. se le cerró la app), vuelve a entrar
+    // aunque la partida ya haya empezado.
+    if (jugadores.containsKey(uid) && meta['hostUid'] != uid) {
+      await reconectar(codigo);
+      return;
+    }
     if (estadoSalaFromName(meta['estado'] as String?) != EstadoSala.lobby) {
       throw SalaException('La partida ya empezó');
     }
-    final jugadores = await _gw.leerUna('salas/$codigo/jugadores') ?? {};
     if (jugadores.length >= GameConstants.maxPlayers &&
         !jugadores.containsKey(uid)) {
       throw SalaException('La sala está llena (máx. ${GameConstants.maxPlayers})');
@@ -100,6 +106,31 @@ class SalaOnlineManager {
 
     _codigo = codigo;
     _hostUid = meta['hostUid'] as String?;
+    await _configurarPresencia();
+  }
+
+  /// Vuelve a entrar a una sala de la que el jugador ya formaba parte (se le
+  /// cerró la app o perdió la conexión). Solo sirve para invitados: el estado
+  /// de la partida del host vive en su memoria, así que si el host se va la
+  /// sala termina (su onDisconnect la marca 'abandonada').
+  Future<void> reconectar(String codigo) async {
+    final meta = await _gw.leerUna('salas/$codigo/meta');
+    if (meta == null) {
+      throw SalaException('La sala "$codigo" ya no existe');
+    }
+    final estado = estadoSalaFromName(meta['estado'] as String?);
+    final hostUid = meta['hostUid'] as String?;
+    if (estado == EstadoSala.abandonada || hostUid == uid) {
+      throw SalaException('La sala "$codigo" ya se cerró');
+    }
+    final yo = await _gw.leerUna('salas/$codigo/jugadores/$uid');
+    if (yo == null) {
+      throw SalaException('Ya no formas parte de la sala "$codigo"');
+    }
+    await _gw.actualizar('salas/$codigo/jugadores/$uid', {'conectado': true});
+
+    _codigo = codigo;
+    _hostUid = hostUid;
     await _configurarPresencia();
   }
 
@@ -179,6 +210,11 @@ class SalaOnlineManager {
   /// Emite el voto del jugador local (solo válido en estado 'votando').
   Future<void> votar(String codigo, String objetivoUid) =>
       _gw.escribir('salas/$codigo/votos/$uid', {'objetivoUid': objetivoUid});
+
+  /// True si el jugador local ya votó en la votación en curso (sirve al
+  /// reconectar a mitad de votación: no se le vuelve a pedir el voto).
+  Future<bool> yaVote(String codigo) async =>
+      await _gw.leerUna('salas/$codigo/votos/$uid') != null;
 
   /// Stream de los votos emitidos (solo el host puede leer este nodo).
   Stream<Map<String, dynamic>?> observarVotos(String codigo) =>

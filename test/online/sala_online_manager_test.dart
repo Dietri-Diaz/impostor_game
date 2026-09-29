@@ -104,4 +104,76 @@ void main() {
     final jug = await gw.leerUna('salas/$codigo/jugadores/h');
     expect(jug!['conectado'], false);
   });
+
+  group('reconexión', () {
+    Future<(FakeSalaGateway, String)> salaEnJuego() async {
+      final gw = FakeSalaGateway();
+      final host = SalaOnlineManager(gateway: gw, uid: 'h', random: Random(1));
+      final codigo = await host.crearSala(
+          nombreHost: 'Ana', tematica: 'Animales', configuracion: ConfiguracionPartida());
+      final guest = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(2));
+      await guest.unirseSala(codigo: codigo, nombre: 'Beto');
+      // La partida empieza y al invitado se le cierra la app.
+      await gw.actualizar('salas/$codigo/meta', {'estado': EstadoSala.votando.name});
+      await gw.actualizar('salas/$codigo/jugadores/g', {'conectado': false});
+      return (gw, codigo);
+    }
+
+    test('el invitado vuelve a su sala a mitad de partida', () async {
+      final (gw, codigo) = await salaEnJuego();
+      final vuelta = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(3));
+      await vuelta.reconectar(codigo);
+
+      expect(vuelta.codigo, codigo);
+      expect(vuelta.esHost, false);
+      final jug = await gw.leerUna('salas/$codigo/jugadores/g');
+      expect(jug!['conectado'], true);
+      expect(jug['numero'], 2, reason: 'conserva su número');
+      expect(gw.onDisconnects.containsKey('salas/$codigo/jugadores/g/conectado'), true);
+    });
+
+    test('unirse con el mismo código a una partida empezada = reconectar', () async {
+      final (gw, codigo) = await salaEnJuego();
+      final vuelta = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(3));
+      await vuelta.unirseSala(codigo: codigo, nombre: 'Beto');
+      final jug = await gw.leerUna('salas/$codigo/jugadores/g');
+      expect(jug!['conectado'], true);
+    });
+
+    test('un desconocido no puede entrar a una partida empezada', () async {
+      final (gw, codigo) = await salaEnJuego();
+      final otro = SalaOnlineManager(gateway: gw, uid: 'x', random: Random(3));
+      expect(() => otro.unirseSala(codigo: codigo, nombre: 'Caro'),
+          throwsA(isA<SalaException>()));
+      expect(() => otro.reconectar(codigo), throwsA(isA<SalaException>()));
+    });
+
+    test('no reconecta a una sala abandonada por el host', () async {
+      final (gw, codigo) = await salaEnJuego();
+      await gw.actualizar('salas/$codigo/meta', {'estado': EstadoSala.abandonada.name});
+      final vuelta = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(3));
+      expect(() => vuelta.reconectar(codigo), throwsA(isA<SalaException>()));
+    });
+
+    test('no reconecta a una sala que ya no existe', () async {
+      final gw = FakeSalaGateway();
+      final vuelta = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(3));
+      expect(() => vuelta.reconectar('ZZZZZZ'), throwsA(isA<SalaException>()));
+    });
+
+    test('el host no puede retomar su sala (su partida vivía en memoria)', () async {
+      final (gw, codigo) = await salaEnJuego();
+      final hostDeVuelta = SalaOnlineManager(gateway: gw, uid: 'h', random: Random(3));
+      expect(() => hostDeVuelta.reconectar(codigo), throwsA(isA<SalaException>()));
+    });
+
+    test('yaVote refleja si el jugador ya emitió su voto', () async {
+      final (gw, codigo) = await salaEnJuego();
+      final vuelta = SalaOnlineManager(gateway: gw, uid: 'g', random: Random(3));
+      await vuelta.reconectar(codigo);
+      expect(await vuelta.yaVote(codigo), false);
+      await vuelta.votar(codigo, 'h');
+      expect(await vuelta.yaVote(codigo), true);
+    });
+  });
 }

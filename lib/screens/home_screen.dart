@@ -6,7 +6,9 @@ import 'package:provider/provider.dart';
 
 import '../core/app_theme.dart';
 import '../core/app_typography.dart';
+import '../managers/sala_online_manager.dart';
 import '../services/audio_service.dart';
+import '../services/firebase_sala_gateway.dart';
 import '../services/firebase_service.dart';
 import '../services/preferences_service.dart';
 import '../services/session_persistence.dart';
@@ -16,6 +18,7 @@ import '../widgets/auto_fit_title.dart';
 import 'configurar_partida_screen.dart';
 import 'lobby_screen.dart';
 import 'online/crear_sala_screen.dart';
+import 'online/lobby_online_screen.dart';
 import 'online/unirse_sala_screen.dart';
 import 'reglas_screen.dart';
 
@@ -30,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
   late AnimationController _logoController;
   late Animation<double> _logoScale;
+  bool _reconectando = false;
 
   @override
   void initState() {
@@ -55,6 +59,52 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeMostrarOnboarding();
     });
+  }
+
+  void _avisoOnlineNoDisponible() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('El modo online no está disponible (revisa tu conexión).'),
+      ),
+    );
+  }
+
+  /// Vuelve a la sala online en la que estaba el jugador (se le cerró la app
+  /// o perdió la conexión a mitad de partida).
+  Future<void> _reconectarSala(String codigo) async {
+    if (_reconectando) return;
+    final firebase = context.read<FirebaseService?>();
+    if (firebase == null) {
+      _avisoOnlineNoDisponible();
+      return;
+    }
+    final prefs = context.read<PreferencesService>();
+    setState(() => _reconectando = true);
+    try {
+      final mgr = SalaOnlineManager(
+        gateway: FirebaseSalaGateway(firebase.db),
+        uid: firebase.uid,
+      );
+      await mgr.reconectar(codigo);
+      if (!mounted) return;
+      await Navigator.of(context).push(SlidePageRoute(
+        page: LobbyOnlineScreen(codigo: codigo, manager: mgr, esHost: false),
+      ));
+    } on SalaException catch (e) {
+      await prefs.clearSalaActiva();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se pudo reconectar. Revisa tu conexión.'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _reconectando = false);
+    }
   }
 
   Future<void> _maybeMostrarOnboarding() async {
@@ -439,30 +489,49 @@ class _HomeScreenState extends State<HomeScreen>
                         // ── Sección JUGAR ONLINE ──────────────────────────
                         const Text('JUGAR ONLINE', style: AppType.label),
                         const SizedBox(height: 10),
+                        // Reconectar si quedó una sala a medias
+                        ValueListenableBuilder<String?>(
+                          valueListenable: context
+                              .read<PreferencesService>()
+                              .salaActivaNotifier,
+                          builder: (context, codigo, _) {
+                            if (codigo == null) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: AppButton(
+                                text: _reconectando
+                                    ? 'Reconectando…'
+                                    : 'Volver a la sala $codigo',
+                                icon: _reconectando
+                                    ? null
+                                    : Icons.wifi_rounded,
+                                variant: AppButtonVariant.safe,
+                                onPressed: _reconectando
+                                    ? null
+                                    : () async {
+                                        AudioService.playClick();
+                                        await _reconectarSala(codigo);
+                                      },
+                              ),
+                            );
+                          },
+                        ),
                         AppButton(
                           text: 'Crear sala',
                           icon: Icons.add_circle_outline,
                           variant: AppButtonVariant.secondary,
-                          onPressed: () {
+                          onPressed: () async {
                             AudioService.playClick();
-                            final firebase =
-                                context.read<FirebaseService?>();
-                            if (firebase == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'El modo online no está disponible'
-                                    ' (revisa tu conexión).',
-                                  ),
-                                ),
-                              );
+                            if (context.read<FirebaseService?>() == null) {
+                              _avisoOnlineNoDisponible();
                               return;
                             }
-                            Navigator.of(context).push(
+                            await Navigator.of(context).push(
                               SlidePageRoute(
                                 page: const CrearSalaScreen(),
                               ),
                             );
+                            if (mounted) setState(() {});
                           },
                         ),
                         const SizedBox(height: 10),
@@ -470,26 +539,18 @@ class _HomeScreenState extends State<HomeScreen>
                           text: 'Unirse con código',
                           icon: Icons.login_rounded,
                           variant: AppButtonVariant.secondary,
-                          onPressed: () {
+                          onPressed: () async {
                             AudioService.playClick();
-                            final firebase =
-                                context.read<FirebaseService?>();
-                            if (firebase == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'El modo online no está disponible'
-                                    ' (revisa tu conexión).',
-                                  ),
-                                ),
-                              );
+                            if (context.read<FirebaseService?>() == null) {
+                              _avisoOnlineNoDisponible();
                               return;
                             }
-                            Navigator.of(context).push(
+                            await Navigator.of(context).push(
                               SlidePageRoute(
                                 page: const UnirseSalaScreen(),
                               ),
                             );
+                            if (mounted) setState(() {});
                           },
                         ),
 

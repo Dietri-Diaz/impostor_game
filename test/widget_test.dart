@@ -12,8 +12,11 @@ import 'package:impostor_game/services/preferences_service.dart';
 /// mockeado, igual que `main()` provee el servicio por encima de [ImpostorGame].
 /// `onboarding.done: true` evita que el Home navegue al onboarding en el
 /// primer frame (lo que ocultaría los elementos del Home).
-Future<Widget> _appBajoPrueba() async {
-  SharedPreferences.setMockInitialValues({'onboarding.done': true});
+Future<Widget> _appBajoPrueba({String? salaActiva}) async {
+  SharedPreferences.setMockInitialValues({
+    'onboarding.done': true,
+    if (salaActiva != null) 'online.sala_activa': salaActiva,
+  });
   final prefs = PreferencesService(await SharedPreferences.getInstance());
   return Provider<PreferencesService>.value(
     value: prefs,
@@ -39,5 +42,26 @@ void main() {
     // El wordmark y el botón principal del rediseño Minimal Bold.
     expect(find.text('IMPOSTOR'), findsOneWidget);
     expect(find.text('Jugar ahora'), findsOneWidget);
+  });
+
+  testWidgets('Home ofrece volver a la sala online guardada y la oculta al olvidarla',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(await _appBajoPrueba(salaActiva: 'ABC234'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Volver a la sala ABC234'), findsOneWidget);
+
+    final prefs = tester
+        .element(find.byType(HomeScreen))
+        .read<PreferencesService>();
+    await prefs.clearSalaActiva();
+    await tester.pump();
+    expect(find.text('Volver a la sala ABC234'), findsNothing);
+  });
+
+  testWidgets('Home no muestra "Volver a la sala" sin sala guardada',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(await _appBajoPrueba());
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('Volver a la sala'), findsNothing);
   });
 }
