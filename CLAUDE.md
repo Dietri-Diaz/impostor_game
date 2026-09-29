@@ -1,7 +1,7 @@
 # CLAUDE.md - Impostor Game
 
 ## Descripcion del Proyecto
-Juego de fiesta multijugador local (3-8 jugadores, un solo dispositivo) donde los jugadores deben identificar al impostor entre ellos. El impostor no conoce el personaje secreto y debe sobrevivir sin ser descubierto.
+Juego de fiesta (3-8 jugadores) en dos modos: **local** (un solo dispositivo, pasa-teléfono) y **Sala Online** (cada jugador en su celular, por código). Los jugadores los jugadores deben identificar al impostor entre ellos. El impostor no conoce el personaje secreto y debe sobrevivir sin ser descubierto.
 
 ## Stack Tecnologico
 - **Framework:** Flutter (Dart)
@@ -9,6 +9,7 @@ Juego de fiesta multijugador local (3-8 jugadores, un solo dispositivo) donde lo
 - **Base de datos:** SQLite (sqflite)
 - **Audio:** audioplayers
 - **Animaciones:** animated_text_kit, confetti
+- **Online:** Firebase Realtime Database + Firebase Auth anónima (plan Spark)
 
 ## Arquitectura
 ```
@@ -34,7 +35,20 @@ lib/
 ```
 
 ## Flujo del Juego
-HomeScreen -> ConfigurarPartida -> ListaTematicas -> ConfigurarJugadores -> RevelarRoles -> Votacion -> ResultadoRonda -> (siguiente ronda o ResultadoFinal)
+Local: HomeScreen -> ConfigurarPartida -> ListaTematicas -> ConfigurarJugadores -> RevelarRoles -> Votacion -> ResultadoRonda -> (siguiente ronda o ResultadoFinal)
+
+Online: HomeScreen -> CrearSala / UnirseSala -> LobbyOnlineScreen. El lobby es un router: escucha `salas/{codigo}/meta/estado` y pinta la vista de cada fase (lobby, revelando, discusion, votando, resultado, finalizada, abandonada).
+
+## Modo Sala Online (cómo funciona)
+- **Host-authoritative:** el host corre el `PartidaManager` de siempre en su celular y publica el estado en RTDB (`RondaOnlineSync`). Los invitados solo leen y votan.
+- **Anti-trampa:** el rol de cada jugador vive en `salas/{codigo}/privado/{uid}` y las reglas (`database.rules.json`) solo dejan leer el propio. Los votos solo los lee el host.
+- **Seam `SalaGateway`:** `FirebaseSalaGateway` (real) y `test/online/fake_sala_gateway.dart` (en memoria) → la lógica de salas se testea sin Firebase.
+- **Código:** `lib/managers/{sala_online_manager,ronda_online_sync,sala_codigo,sala_predicados}.dart`, pantallas en `lib/screens/online/`.
+- **Presencia:** `onDisconnect` marca `conectado: false`; si el que se va es el host, además `meta.estado = abandonada` y todos ven "El anfitrión salió de la sala".
+- **Reconexión (solo invitados):** el código de la sala se guarda en `PreferencesService.salaActivaCodigo`; Home muestra "Volver a la sala XXXXXX" y `SalaOnlineManager.reconectar()` lo devuelve a la fase actual con su rol (si ya votó, no se le vuelve a pedir). Unirse con el mismo código también reconecta. El host no puede retomar: su partida vive en memoria, así que si se va la sala termina.
+- **Config Firebase:** `android/app/google-services.json` NO está en el repo (gitignored). Para regenerarlo: Firebase Console → proyecto `impostor-game-b3f9c` → Configuración del proyecto → app Android `com.dreamers.impostorgame` → descargar `google-services.json` a `android/app/`. La URL de la RTDB está fija en `FirebaseService`. Las reglas se publican pegando `database.rules.json` en Realtime Database → Rules.
+- **Sin Firebase** (sin json, sin red o auth anónima apagada) la app arranca igual en modo local y los botones online avisan que no está disponible.
+- Spec: `docs/superpowers/specs/2026-06-03-modo-sala-online-design.md` · Plan: `docs/superpowers/plans/2026-06-03-modo-sala-online.md`
 
 ## Tematicas Predefinidas
 Dragon Ball, Marvel, Naruto, One Piece (14 personajes cada una con emojis)
@@ -51,9 +65,19 @@ flutter analyze      # Analizar codigo
 
 ## Estado actual
 
-Modo local cerrado al 100%. Próximo gran feature pendiente: **modo multijugador online por salas** (Firebase Realtime DB + Auth anónimo). Ver historial en este archivo.
+Modo local y **modo Sala Online** terminados. Pendiente solo lo de "Nice to have".
 
 ## Tareas Completadas
+
+### 🌐 Modo Sala Online (2026-06 → 2026-09) — rama `modo-sala-online`
+- [x] Sala con código de 6 caracteres; cada jugador usa su propio celular (sin pasa-teléfono)
+- [x] Firebase RTDB + Auth anónima, host-authoritative reusando `PartidaManager` (`crearPartida` acepta UIDs como ids)
+- [x] `Partida.fromJson` / `Ronda.fromJson` para serializar hacia/desde RTDB
+- [x] Lobby en vivo con "Estoy listo" (el host empieza con ≥3 conectados y todos listos)
+- [x] Revelar rol por dispositivo, discusión, votación secreta con auto-cierre cuando todos votan (o el host fuerza), resultado de ronda, resultado final y nueva partida
+- [x] Reglas de seguridad RTDB (rol privado por jugador, votos solo para el host, solo el host escribe meta/publico)
+- [x] Aviso "El anfitrión salió de la sala" para todos cuando el host se va
+- [x] Reconexión de invitados desde Home ("Volver a la sala") o reingresando el mismo código
 
 ### 🖤 Rediseño "Minimal Bold" (2026-06) — rama `rediseno-minimal-bold`
 - [x] Dirección visual **Minimal Bold**: fondo casi negro, tipografía grande, paleta disciplinada (tinta + blanco + rojo `#E0223E` peligro/impostor + verde menta `#22C55E` seguro/civil/victoria + oro solo para el #1)
@@ -126,15 +150,6 @@ Modo local cerrado al 100%. Próximo gran feature pendiente: **modo multijugador
 - [x] Optimizacion del timer de votación: `ValueNotifier<int>` + `ValueListenableBuilder` para evitar rebuilds del Scaffold completo cada segundo
 
 ## Tareas Pendientes (próximas fases)
-
-### 🌐 Modo Multijugador Online (siguiente gran feature)
-- [ ] Modo "Sala Online" con código de 6 letras donde cada jugador usa su propio celular conectándose por internet
-- [ ] Cada jugador ve solo su rol en su pantalla (sin pasa-teléfono)
-- [ ] Backend: Firebase Realtime Database (plan gratuito Spark) + Firebase Anonymous Auth
-- [ ] Capa de abstracción `PartidaSource` con `LocalPartidaSource` (modo actual) y `OnlinePartidaSource` (Firebase)
-- [ ] Host-authoritative con reglas de seguridad RTDB
-- [ ] Sincronización de fases vía `meta.estado` con `StreamBuilder` raíz por screen
-- [ ] Plan completo en `~/.claude/plans/snoopy-popping-adleman.md`
 
 ### 🎁 Nice to have
 - [ ] Importar / exportar temáticas personalizadas (share_plus + JSON)
